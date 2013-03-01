@@ -124,8 +124,8 @@ if not options.debug: debug = lambda msg: None
 os.chdir(args[0])
 snipers = Snipers()
 wm = WatchManager()
-mask = EventsCodes.IN_CLOSE_WRITE|EventsCodes.IN_MOVED_TO| \
-    EventsCodes.IN_MOVED_FROM|EventsCodes.IN_DELETE
+mask = EventsCodes.ALL_FLAGS['IN_CLOSE_WRITE']|EventsCodes.ALL_FLAGS['IN_MOVED_TO']| \
+    EventsCodes.ALL_FLAGS['IN_MOVED_FROM']|EventsCodes.ALL_FLAGS['IN_DELETE']
 notifier = Notifier(wm, ProcessFiles())
 wm.add_watch('auction/', mask)
 
