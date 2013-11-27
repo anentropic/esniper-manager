@@ -78,7 +78,7 @@ class Snipers(object):
         if auction in self.proc:
             self.stop(auction)
         debug("starting " + auction)
-        log = open("log/" + auction, 'w')
+        log = open("log/" + auction, 'a')  # use logrotate on the file
         self.proc[auction] = subprocess.Popen(["esniper", auction],
             stdout=log, stderr=subprocess.STDOUT, cwd='auction/')
         #debug("Forking for " + auction)
