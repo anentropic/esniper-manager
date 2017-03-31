@@ -40,7 +40,7 @@
 # IN_MOVED_TO: restart
 # IN_DELETE: stop
 
-import sys, os, signal, optparse, re, subprocess, locale
+import sys, os, signal, re, subprocess, locale, argparse
 # for output/log file encoding (does not work as _we_ don't write in that file)
 # maybe for filefilter re checks (but I think just plain "UNICODE" is better)
 # to convert file names to unicode objects I don't need to set the locale, but anyway
@@ -108,20 +108,16 @@ class ProcessFiles(ProcessEvent):
     process_IN_DELETE = process_IN_MOVED_FROM
 
 
-optparser = optparse.OptionParser(version="%prog 0.2",
-    usage='%prog [options] directory',
-    description='%prog watches directory for auction/* files to attach esnipers.')
-optparser.add_option('-d', '--debug', action='store_true',
+argparser = argparse.ArgumentParser(version="%(prog)s 0.2",
+    description='%(prog)s watches directory for auction/* files to attach esnipers.')
+argparser.add_argument('-d', '--debug', action='store_true',
                 help='print simple debug statements')
+argparser.add_argument('directory', help='Directory to watch for auctions.')
+args = argparser.parse_args()
 
-options, args = optparser.parse_args()
+if not args.debug: debug = lambda msg: None
 
-if len(args) != 1:
-    optparser.error("I need a directory to watch for auctions.")
-
-if not options.debug: debug = lambda msg: None
-
-os.chdir(args[0])
+os.chdir(args.directory)
 snipers = Snipers()
 wm = WatchManager()
 mask = EventsCodes.ALL_FLAGS['IN_CLOSE_WRITE']|EventsCodes.ALL_FLAGS['IN_MOVED_TO']| \
