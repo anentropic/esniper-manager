@@ -66,11 +66,6 @@ class Snipers(object):
             logging.debug('pid ' + str(p.pid))
             p.kill()
             p.wait()
-            #pid = self.proc.pop(auction)
-            #debug("Killing " + auction)
-            #os.kill(pid, signal.SIGTERM)
-            #os.waitpid(pid, 0)
-            #debug(auction + " finished.")
 
     def restart(self, auction):
         if auction in self.proc:
@@ -79,15 +74,6 @@ class Snipers(object):
         log = open("log/" + auction, 'a')  # use logrotate on the file
         self.proc[auction] = subprocess.Popen(["esniper", auction],
             stdout=log, stderr=subprocess.STDOUT, cwd='auction/')
-        #debug("Forking for " + auction)
-        #pid = os.fork()
-        #if pid == 0: # child
-            ## logfd = os.open('log/' + auction, os.O_WRONLY|os.O_CREAT|os.O_TRUNC)
-            #log = open("log/" + auction, 'a')
-            #os.dup2(log.fileno(), sys.stdout.fileno())
-            #os.execlp("esniper", "esniper", auction)
-        ## parent
-        # self.proc[auction] = pid
 
 
 from pyinotify import WatchManager, Notifier, ProcessEvent, EventsCodes
