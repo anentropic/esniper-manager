@@ -96,32 +96,36 @@ class ProcessFiles(ProcessEvent):
     process_IN_DELETE = process_IN_MOVED_FROM
 
 
-argparser = argparse.ArgumentParser(version="%(prog)s 0.2",
-    description='%(prog)s watches directory for auction/* files to attach esnipers.')
-argparser.add_argument('-d', '--debug', action='store_true',
-                help='print simple debug statements')
-argparser.add_argument('directory', help='Directory to watch for auctions.')
-args = argparser.parse_args()
+def main():
+    argparser = argparse.ArgumentParser(version="%(prog)s 0.2",
+        description='%(prog)s watches directory for auction/* files to attach esnipers.')
+    argparser.add_argument('-d', '--debug', action='store_true',
+                    help='print simple debug statements')
+    argparser.add_argument('directory', help='Directory to watch for auctions.')
+    args = argparser.parse_args()
 
-if args.debug:
-    logging.basicConfig(level=logging.DEBUG)
-else:
-    logging.basicConfig(level=logging.INFO)
+    if args.debug:
+        logging.basicConfig(level=logging.DEBUG)
+    else:
+        logging.basicConfig(level=logging.INFO)
 
-os.chdir(args.directory)
-snipers = Snipers()
-wm = WatchManager()
-mask = EventsCodes.ALL_FLAGS['IN_CLOSE_WRITE']|EventsCodes.ALL_FLAGS['IN_MOVED_TO']| \
-    EventsCodes.ALL_FLAGS['IN_MOVED_FROM']|EventsCodes.ALL_FLAGS['IN_DELETE']
-notifier = Notifier(wm, ProcessFiles(snipers))
-wm.add_watch('auction/', mask)
+    os.chdir(args.directory)
+    snipers = Snipers()
+    wm = WatchManager()
+    mask = EventsCodes.ALL_FLAGS['IN_CLOSE_WRITE']|EventsCodes.ALL_FLAGS['IN_MOVED_TO']| \
+        EventsCodes.ALL_FLAGS['IN_MOVED_FROM']|EventsCodes.ALL_FLAGS['IN_DELETE']
+    notifier = Notifier(wm, ProcessFiles(snipers))
+    wm.add_watch('auction/', mask)
 
-auctions = filter(filefilter, os.listdir('auction/'))
-for a in auctions:
-    snipers.restart(a)
+    auctions = filter(filefilter, os.listdir('auction/'))
+    for a in auctions:
+        snipers.restart(a)
 
-while True:
-    logging.debug('cycle')
-    if notifier.check_events(None): # "None" necessary for endless select()
-        notifier.read_events()
-        notifier.process_events()
+    while True:
+        logging.debug('cycle')
+        if notifier.check_events(None): # "None" necessary for endless select()
+            notifier.read_events()
+            notifier.process_events()
+
+if __name__ == '__main__':
+    main()
