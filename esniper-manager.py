@@ -79,15 +79,19 @@ class Snipers(object):
 from pyinotify import WatchManager, Notifier, ProcessEvent, EventsCodes
 
 class ProcessFiles(ProcessEvent):
+
+    def __init__(self, snipers):
+        self._snipers = snipers
+
     def process_IN_CLOSE_WRITE(self, event):
         if filefilter(event.name):
-            snipers.restart(event.name)
+            self._snipers.restart(event.name)
 
     process_IN_MOVED_TO = process_IN_CLOSE_WRITE
 
     def process_IN_MOVED_FROM(self, event):
         if filefilter(event.name):
-            snipers.stop(event.name)
+            self._snipers.stop(event.name)
 
     process_IN_DELETE = process_IN_MOVED_FROM
 
@@ -109,7 +113,7 @@ snipers = Snipers()
 wm = WatchManager()
 mask = EventsCodes.ALL_FLAGS['IN_CLOSE_WRITE']|EventsCodes.ALL_FLAGS['IN_MOVED_TO']| \
     EventsCodes.ALL_FLAGS['IN_MOVED_FROM']|EventsCodes.ALL_FLAGS['IN_DELETE']
-notifier = Notifier(wm, ProcessFiles())
+notifier = Notifier(wm, ProcessFiles(snipers))
 wm.add_watch('auction/', mask)
 
 auctions = filter(filefilter, os.listdir('auction/'))
