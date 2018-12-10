@@ -1,6 +1,4 @@
-#!/usr/bin/python
-# Needs at least python2.5 for correct subprocess module.
-# With this one subprocess does not clean up behind your back.
+#!/usr/bin/python3
 
 # Copyright 2008 Robert Siemer
 #
@@ -40,21 +38,10 @@
 # IN_MOVED_TO: restart
 # IN_DELETE: stop
 
-import sys, os, signal, re, subprocess, locale, argparse
-# for output/log file encoding (does not work as _we_ don't write in that file)
-# maybe for filefilter re checks (but I think just plain "UNICODE" is better)
-# to convert file names to unicode objects I don't need to set the locale, but anyway
-locale.resetlocale() # same as locale.setlocale(locale.LC_ALL, '') or not?
-encoding = locale.getpreferredencoding(False) # here we get _always_ a good guess
+import os, re, subprocess, argparse, logging
 
-def debug(msg):
-    print >> sys.stderr, msg
-
-def unicod(str):
-    return unicode(str, encoding, 'replace')
-
-def filefilter(name, bad = re.compile(ur"\W", re.UNICODE)):
-    return not bad.search(unicod(name))
+def filefilter(name, bad = re.compile(r"\.bug\.html", re.UNICODE)):
+    return not bad.search(name)
 
 class Snipers(object):
     def __init__(self):
@@ -62,76 +49,72 @@ class Snipers(object):
 
     def stop(self, auction):
         if auction not in self.proc:
-            debug("no esniper started for " + auction)
+            logging.debug("no esniper started for " + auction)
         else:
-            debug("stopping " + auction)
+            logging.debug("stopping " + auction)
             p = self.proc.pop(auction)
-            debug('pid ' + str(p.pid))
+            logging.debug('pid ' + str(p.pid))
             p.kill()
             p.wait()
-            #pid = self.proc.pop(auction)
-            #debug("Killing " + auction)
-            #os.kill(pid, signal.SIGTERM)
-            #os.waitpid(pid, 0)
-            #debug(auction + " finished.")
 
     def restart(self, auction):
         if auction in self.proc:
             self.stop(auction)
-        debug("starting " + auction)
+        logging.debug("starting " + auction)
         log = open("log/" + auction, 'a')  # use logrotate on the file
         self.proc[auction] = subprocess.Popen(["esniper", auction],
             stdout=log, stderr=subprocess.STDOUT, cwd='auction/')
-        #debug("Forking for " + auction)
-        #pid = os.fork()
-        #if pid == 0: # child
-            ## logfd = os.open('log/' + auction, os.O_WRONLY|os.O_CREAT|os.O_TRUNC)
-            #log = open("log/" + auction, 'a')
-            #os.dup2(log.fileno(), sys.stdout.fileno())
-            #os.execlp("esniper", "esniper", auction)
-        ## parent
-        # self.proc[auction] = pid
 
 
 from pyinotify import WatchManager, Notifier, ProcessEvent, EventsCodes
 
 class ProcessFiles(ProcessEvent):
+
+    def __init__(self, snipers):
+        self._snipers = snipers
+
     def process_IN_CLOSE_WRITE(self, event):
         if filefilter(event.name):
-            snipers.restart(event.name)
+            self._snipers.restart(event.name)
 
     process_IN_MOVED_TO = process_IN_CLOSE_WRITE
 
     def process_IN_MOVED_FROM(self, event):
         if filefilter(event.name):
-            snipers.stop(event.name)
+            self._snipers.stop(event.name)
 
     process_IN_DELETE = process_IN_MOVED_FROM
 
 
-argparser = argparse.ArgumentParser(version="%(prog)s 0.2",
-    description='%(prog)s watches directory for auction/* files to attach esnipers.')
-argparser.add_argument('-d', '--debug', action='store_true',
-                help='print simple debug statements')
-argparser.add_argument('directory', help='Directory to watch for auctions.')
-args = argparser.parse_args()
+def main():
+    argparser = argparse.ArgumentParser(description='%(prog)s watches directory for auction/* files to attach esnipers.')
+    argparser.add_argument('--version', action='version', version='%(prog)s 0.3')
+    argparser.add_argument('-d', '--debug', action='store_true', help='print simple debug statements')
+    argparser.add_argument('directory', help='Directory to watch for auctions.')
+    args = argparser.parse_args()
 
-if not args.debug: debug = lambda msg: None
+    if args.debug:
+        logging.basicConfig(level=logging.DEBUG)
+    else:
+        logging.basicConfig(level=logging.INFO)
 
-os.chdir(args.directory)
-snipers = Snipers()
-wm = WatchManager()
-mask = EventsCodes.ALL_FLAGS['IN_CLOSE_WRITE']|EventsCodes.ALL_FLAGS['IN_MOVED_TO']| \
-    EventsCodes.ALL_FLAGS['IN_MOVED_FROM']|EventsCodes.ALL_FLAGS['IN_DELETE']
-notifier = Notifier(wm, ProcessFiles())
-wm.add_watch('auction/', mask)
+    os.chdir(args.directory)
+    snipers = Snipers()
+    wm = WatchManager()
+    mask = EventsCodes.ALL_FLAGS['IN_CLOSE_WRITE']|EventsCodes.ALL_FLAGS['IN_MOVED_TO']| \
+        EventsCodes.ALL_FLAGS['IN_MOVED_FROM']|EventsCodes.ALL_FLAGS['IN_DELETE']
+    notifier = Notifier(wm, ProcessFiles(snipers))
+    wm.add_watch('auction/', mask)
 
-auctions = filter(filefilter, os.listdir('auction/'))
-for a in auctions:
-    snipers.restart(a)
+    auctions = filter(filefilter, os.listdir('auction/'))
+    for a in auctions:
+        snipers.restart(a)
 
-while True:
-    debug('cycle')
-    if notifier.check_events(None): # "None" necessary for endless select()
-        notifier.read_events()
-        notifier.process_events()
+    while True:
+        logging.debug('cycle')
+        if notifier.check_events(None): # "None" necessary for endless select()
+            notifier.read_events()
+            notifier.process_events()
+
+if __name__ == '__main__':
+    main()
