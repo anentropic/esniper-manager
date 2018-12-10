@@ -1,6 +1,4 @@
-#!/usr/bin/python
-# Needs at least python2.5 for correct subprocess module.
-# With this one subprocess does not clean up behind your back.
+#!/usr/bin/python3
 
 # Copyright 2008 Robert Siemer
 #
@@ -40,18 +38,10 @@
 # IN_MOVED_TO: restart
 # IN_DELETE: stop
 
-import sys, os, signal, re, subprocess, locale, argparse, logging
-# for output/log file encoding (does not work as _we_ don't write in that file)
-# maybe for filefilter re checks (but I think just plain "UNICODE" is better)
-# to convert file names to unicode objects I don't need to set the locale, but anyway
-locale.resetlocale() # same as locale.setlocale(locale.LC_ALL, '') or not?
-encoding = locale.getpreferredencoding(False) # here we get _always_ a good guess
+import os, re, subprocess, argparse, logging
 
-def unicod(str):
-    return unicode(str, encoding, 'replace')
-
-def filefilter(name, bad = re.compile(ur"\W", re.UNICODE)):
-    return not bad.search(unicod(name))
+def filefilter(name, bad = re.compile(r"\.bug\.html", re.UNICODE)):
+    return not bad.search(name)
 
 class Snipers(object):
     def __init__(self):
@@ -97,10 +87,9 @@ class ProcessFiles(ProcessEvent):
 
 
 def main():
-    argparser = argparse.ArgumentParser(version="%(prog)s 0.2",
-        description='%(prog)s watches directory for auction/* files to attach esnipers.')
-    argparser.add_argument('-d', '--debug', action='store_true',
-                    help='print simple debug statements')
+    argparser = argparse.ArgumentParser(description='%(prog)s watches directory for auction/* files to attach esnipers.')
+    argparser.add_argument('--version', action='version', version='%(prog)s 0.3')
+    argparser.add_argument('-d', '--debug', action='store_true', help='print simple debug statements')
     argparser.add_argument('directory', help='Directory to watch for auctions.')
     args = argparser.parse_args()
 
