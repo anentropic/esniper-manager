@@ -40,15 +40,12 @@
 # IN_MOVED_TO: restart
 # IN_DELETE: stop
 
-import sys, os, signal, re, subprocess, locale, argparse
+import sys, os, signal, re, subprocess, locale, argparse, logging
 # for output/log file encoding (does not work as _we_ don't write in that file)
 # maybe for filefilter re checks (but I think just plain "UNICODE" is better)
 # to convert file names to unicode objects I don't need to set the locale, but anyway
 locale.resetlocale() # same as locale.setlocale(locale.LC_ALL, '') or not?
 encoding = locale.getpreferredencoding(False) # here we get _always_ a good guess
-
-def debug(msg):
-    print >> sys.stderr, msg
 
 def unicod(str):
     return unicode(str, encoding, 'replace')
@@ -62,11 +59,11 @@ class Snipers(object):
 
     def stop(self, auction):
         if auction not in self.proc:
-            debug("no esniper started for " + auction)
+            logging.debug("no esniper started for " + auction)
         else:
-            debug("stopping " + auction)
+            logging.debug("stopping " + auction)
             p = self.proc.pop(auction)
-            debug('pid ' + str(p.pid))
+            logging.debug('pid ' + str(p.pid))
             p.kill()
             p.wait()
             #pid = self.proc.pop(auction)
@@ -78,7 +75,7 @@ class Snipers(object):
     def restart(self, auction):
         if auction in self.proc:
             self.stop(auction)
-        debug("starting " + auction)
+        logging.debug("starting " + auction)
         log = open("log/" + auction, 'a')  # use logrotate on the file
         self.proc[auction] = subprocess.Popen(["esniper", auction],
             stdout=log, stderr=subprocess.STDOUT, cwd='auction/')
@@ -116,7 +113,10 @@ argparser.add_argument('-d', '--debug', action='store_true',
 argparser.add_argument('directory', help='Directory to watch for auctions.')
 args = argparser.parse_args()
 
-if not args.debug: debug = lambda msg: None
+if args.debug:
+    logging.basicConfig(level=logging.DEBUG)
+else:
+    logging.basicConfig(level=logging.INFO)
 
 os.chdir(args.directory)
 snipers = Snipers()
@@ -131,7 +131,7 @@ for a in auctions:
     snipers.restart(a)
 
 while True:
-    debug('cycle')
+    logging.debug('cycle')
     if notifier.check_events(None): # "None" necessary for endless select()
         notifier.read_events()
         notifier.process_events()
